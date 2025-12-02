@@ -1,0 +1,222 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the Fiscal Flow application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user."
+        },
+        "username": {
+          "type": "string",
+          "description": "The username of the user."
+        }
+      },
+      "required": [
+        "id",
+        "username"
+      ]
+    },
+    "Expense": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Expense",
+      "type": "object",
+      "description": "Represents an expense recorded by a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the expense."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Expense)"
+        },
+        "categoryId": {
+          "type": "string",
+          "description": "Reference to Category. (Relationship: Category 1:N Expense)"
+        },
+        "amount": {
+          "type": "number",
+          "description": "The amount of the expense."
+        },
+        "date": {
+          "type": "string",
+          "description": "The date of the expense.",
+          "format": "date-time"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the expense."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "categoryId",
+        "amount",
+        "date"
+      ]
+    },
+    "Category": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Category",
+      "type": "object",
+      "description": "Represents a category for expenses.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the category."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Category)"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the category."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the spending category (e.g., Food, Transportation, Utilities)."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "name"
+      ]
+    },
+    "Budget": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Budget",
+      "type": "object",
+      "description": "Represents a budget set by a user for a category.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the budget."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Budget)"
+        },
+        "categoryId": {
+          "type": "string",
+          "description": "Reference to Category. (Relationship: Category 1:N Budget)"
+        },
+        "amount": {
+          "type": "number",
+          "description": "The budget amount for the category."
+        },
+        "startDate": {
+          "type": "string",
+          "description": "The start date of the budget period.",
+          "format": "date-time"
+        },
+        "endDate": {
+          "type": "string",
+          "description": "The end date of the budget period.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "categoryId",
+        "amount",
+        "startDate",
+        "endDate"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profile data.  Root path for user-owned data (expenses, categories, budgets).",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/expenses/{expenseId}",
+        "definition": {
+          "entityName": "Expense",
+          "schema": {
+            "$ref": "#/backend/entities/Expense"
+          },
+          "description": "Stores expense data for a specific user. Path-based ownership ensures only the user can access these expenses.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "expenseId",
+              "description": "The unique identifier for the expense."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/categories/{categoryId}",
+        "definition": {
+          "entityName": "Category",
+          "schema": {
+            "$ref": "#/backend/entities/Category"
+          },
+          "description": "Stores expense categories for a specific user. Path-based ownership enforces user-specific category access.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "categoryId",
+              "description": "The unique identifier for the category."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/budgets/{budgetId}",
+        "definition": {
+          "entityName": "Budget",
+          "schema": {
+            "$ref": "#/backend/entities/Budget"
+          },
+          "description": "Stores budget data for a specific user. Path-based ownership ensures only the user can access their budget information.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "budgetId",
+              "description": "The unique identifier for the budget."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to ensure authorization independence, clarity, and scalability for the Fiscal Flow application.  We leverage path-based ownership for user-specific data like categories, budgets and expenses to simplify security rules.  This approach ensures that only the user associated with a document can access it, enabling atomic operations and avoiding hierarchical authorization dependencies. The paths follow a predictable pattern, enhancing debuggability and maintainability.\n\nSpecifically, Authorization Independence is achieved by avoiding `get()` calls in security rules.  Since expenses, categories, and budgets are all stored under a user's path (`/users/{userId}/...`), we can directly validate the `request.auth.uid` against the `{userId}` path segment in our rules, without needing to read any parent documents. This ensures that all security checks are self-contained and efficient.\n\nTo enable secure `list` operations (QAPs), we segregate data based on ownership. All data under `/users/{userId}` is private to that user. Listing expenses, categories, or budgets only requires checking that `request.auth.uid == userId` in the security rules, preventing unauthorized access. Data segregation simplifies the rules significantly."
+  }
+}
